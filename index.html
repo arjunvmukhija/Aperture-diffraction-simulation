@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Aperture to Image: Physics of Diffraction & Camera Sharpness</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js" onload="if (window.renderMathInElement) renderMathInElement(document.body);"></script>
+</head>
+<body>
+  <!-- Top Navigation & Header -->
+  <header class="app-header">
+    <div class="header-container">
+      <div class="header-branding">
+        <div class="header-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+            <circle cx="12" cy="12" r="10" stroke="#00f0ff"/>
+            <polygon points="12,2 15,9 22,12 15,15 12,22 9,15 2,12 9,9" stroke="#38bdf8" fill="rgba(56, 189, 248, 0.2)"/>
+            <circle cx="12" cy="12" r="3" fill="#00f0ff"/>
+          </svg>
+        </div>
+        <div>
+          <h1 class="header-title">APERTURE TO IMAGE</h1>
+          <p class="header-subtitle">Explore the physics of diffraction, aperture and image sharpness.</p>
+        </div>
+      </div>
+
+      <div class="header-actions">
+        <button id="btnResetExperiment" class="btn btn-outline" title="Reset all parameters to default">
+          <span class="btn-icon">↺</span> Reset
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Primary Mode Selection Buttons -->
+  <nav class="mode-navigation">
+    <div class="mode-btn-group">
+      <button id="btnModeCamera" class="mode-btn active">
+        <span class="mode-btn-icon">📷</span>
+        <div class="mode-btn-text">
+          <span class="mode-title">MODE 1: CAMERA VIEW</span>
+          <span class="mode-desc">View scene through virtual camera & observe diffraction softening</span>
+        </div>
+      </button>
+
+      <button id="btnModeOptical" class="mode-btn">
+        <span class="mode-btn-icon">🔬</span>
+        <div class="mode-btn-text">
+          <span class="mode-title">MODE 2: OPTICAL SYSTEM VIEW</span>
+          <span class="mode-desc">Side cross-section: lenses, diaphragm, diffraction waves & sensor</span>
+        </div>
+      </button>
+    </div>
+  </nav>
+
+  <!-- Master Interactive Aperture Controller (Always visible & synchronized across modes) -->
+  <section class="master-control-section">
+    <div class="control-card">
+      <div class="control-header">
+        <div class="control-label-group">
+          <label class="control-main-label" for="apertureSlider">OPEN THE APERTURE</label>
+          <span class="control-sub-label">Drag slider to adjust iris opening from f/22 (small hole, high diffraction) to f/1.4 (wide hole, low diffraction)</span>
+        </div>
+        <div class="current-f-badge">
+          <span class="f-badge-label">APERTURE:</span>
+          <span class="f-badge-val" id="readoutFNumber">f/22.0</span>
+        </div>
+      </div>
+
+      <!-- Continuous Aperture Slider -->
+      <div class="slider-wrapper">
+        <div class="slider-extremes">
+          <span class="extreme-label left">
+            <span class="indicator-dot red"></span> Small Aperture • f/22
+          </span>
+          <span class="extreme-label right">
+            Wide Aperture • f/1.4 <span class="indicator-dot green"></span>
+          </span>
+        </div>
+
+        <input 
+          type="range" 
+          id="apertureSlider" 
+          class="custom-slider" 
+          min="1.4" 
+          max="22.0" 
+          step="0.1" 
+          value="22.0" 
+          aria-label="Aperture slider"
+        >
+
+        <!-- Discrete Preset Chips -->
+        <div class="f-stops-bar">
+          <button class="f-stop-chip active" data-f="22.0">f/22</button>
+          <button class="f-stop-chip" data-f="16.0">f/16</button>
+          <button class="f-stop-chip" data-f="11.0">f/11</button>
+          <button class="f-stop-chip" data-f="8.0">f/8</button>
+          <button class="f-stop-chip" data-f="5.6">f/5.6</button>
+          <button class="f-stop-chip" data-f="4.0">f/4</button>
+          <button class="f-stop-chip" data-f="2.8">f/2.8</button>
+          <button class="f-stop-chip" data-f="2.0">f/2</button>
+          <button class="f-stop-chip" data-f="1.4">f/1.4</button>
+        </div>
+      </div>
+
+      <!-- Secondary Physics Controls Bar -->
+      <div class="aux-controls-bar">
+        <div class="aux-control-item">
+          <label for="wavelengthSlider" class="aux-label">
+            Light Wavelength (λ): <strong id="wavelengthVal">550 nm</strong> (Green)
+          </label>
+          <input type="range" id="wavelengthSlider" class="mini-slider" min="380" max="750" step="5" value="550">
+        </div>
+
+        <div class="aux-control-item">
+          <label for="focalLengthSelect" class="aux-label">Focal Length (f):</label>
+          <select id="focalLengthSelect" class="styled-select">
+            <option value="35">35 mm (Wide)</option>
+            <option value="50" selected>50 mm (Standard Normal)</option>
+            <option value="85">85 mm (Portrait)</option>
+            <option value="105">105 mm (Telephoto)</option>
+          </select>
+        </div>
+
+        <div class="aux-control-item flex-end">
+          <button id="btnCompareSharpness" class="btn btn-cyan btn-sm">
+            <span>⇄</span> COMPARE SHARPNESS
+          </button>
+        </div>
+      </div>
+
+      <!-- Compare Sharpness Secondary Controls (when active) -->
+      <div id="compareControls" class="compare-bar hidden">
+        <div class="compare-info">
+          <span class="compare-tag">SPLIT-SCREEN COMPARISON</span>
+          <span>Drag the blue vertical divider across the image to inspect before & after sharpness:</span>
+        </div>
+        <div class="compare-select-group">
+          <label for="compareFSelect">Compare current image against:</label>
+          <select id="compareFSelect" class="styled-select">
+            <option value="1.4">f/1.4 (Wide Open)</option>
+            <option value="2.8">f/2.8</option>
+            <option value="4.0" selected>f/4.0 (Recommended Sharp Baseline)</option>
+            <option value="8.0">f/8.0</option>
+            <option value="16.0">f/16.0</option>
+          </select>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Live Scientific Measurement Panel -->
+  <section class="metrics-section">
+    <div class="metrics-grid">
+      <div class="metric-card">
+        <div class="metric-header">
+          <span class="metric-title">Aperture Diameter (D)</span>
+          <span class="metric-formula">D = f / N</span>
+        </div>
+        <div class="metric-value" id="readoutApertureDiameter">2.27 mm</div>
+        <div class="metric-footnote">Effective entrance pupil</div>
+      </div>
+
+      <div class="metric-card">
+        <div class="metric-header">
+          <span class="metric-title">Airy Disk Diameter (d)</span>
+          <span class="metric-formula">d = 2.44 · λ · N</span>
+        </div>
+        <div class="metric-value text-cyan" id="readoutAiryDiameter">29.52 μm</div>
+        <div class="metric-footnote">Central bright diffraction disk</div>
+      </div>
+
+      <div class="metric-card">
+        <div class="metric-header">
+          <span class="metric-title">Angular Resolution (θ)</span>
+          <span class="metric-formula">θ = 1.22 · λ / D</span>
+        </div>
+        <div class="metric-value" id="readoutAngularRes">61.03"</div>
+        <div class="metric-footnote">Rayleigh criterion limit</div>
+      </div>
+
+      <div class="metric-card">
+        <div class="metric-header">
+          <span class="metric-title">Diffraction Level</span>
+          <span class="metric-formula">Airy Spot vs Pixel</span>
+        </div>
+        <div class="metric-value text-red" id="readoutDiffractionLevel">High (Diffraction-Limited)</div>
+        <div class="metric-footnote">Spans ~7.9 sensor pixels</div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- Main Viewports Container -->
+  <main class="main-content">
+    
+    <!-- ==================== MODE 1: CAMERA VIEW ==================== -->
+    <section id="sectionCameraView" class="viewport-section active">
+      <div class="view-header">
+        <div class="view-title-group">
+          <h2>CAMERA VIEWFINDER: VIRTUAL OPTICAL TEST SCENE</h2>
+          <p class="view-desc">
+            Observing through camera lens. True 2D Point-Spread Function (PSF) convolution modeled with Bessel function 
+            \(I(r) \propto [2J_1(x)/x]^2\). Observe how high f-numbers soften fine brickwork, window grilles, text, and resolution charts.
+          </p>
+        </div>
+        <div class="camera-hud-badge">
+          <span class="rec-dot"></span> LIVE SENSOR PREVIEW • 3.76 μm SENSOR PIXELS
+        </div>
+      </div>
+
+      <div class="camera-stage">
+        <!-- Viewfinder Framing Outer Box -->
+        <div class="viewfinder-frame">
+          <!-- Viewfinder Corner Crop Marks -->
+          <div class="crop-mark top-left"></div>
+          <div class="crop-mark top-right"></div>
+          <div class="crop-mark bottom-left"></div>
+          <div class="crop-mark bottom-right"></div>
+
+          <!-- Canvases: Base image + interactive split overlay -->
+          <canvas id="cameraViewCanvas" width="800" height="520" class="main-canvas"></canvas>
+          <canvas id="cameraOverlayCanvas" width="800" height="520" class="overlay-canvas"></canvas>
+
+          <!-- High-power point source Airy disk zoom inset -->
+          <div class="zoom-inset-box">
+            <div class="zoom-header">
+              <span class="zoom-tag">POINT SOURCE ZOOM (20×)</span>
+            </div>
+            <canvas id="pointSourceZoomCanvas" width="130" height="130" class="zoom-canvas"></canvas>
+            <div class="zoom-caption">Star β Airy Rings</div>
+          </div>
+
+          <!-- Bottom Viewfinder HUD -->
+          <div class="viewfinder-hud">
+            <span class="hud-item">[● AUTO FOCUS]</span>
+            <span class="hud-item">ISO 100</span>
+            <span class="hud-item">1/250s</span>
+            <span class="hud-item" id="readoutFocalLength">50 mm</span>
+            <span class="hud-item" id="readoutWavelength">550 nm</span>
+            <span class="hud-item hud-battery">🔋 98%</span>
+          </div>
+        </div>
+
+        <div class="scientific-qualification-banner">
+          <span class="banner-icon">ℹ️</span>
+          <span>
+            <strong>Scientific Note:</strong> This simulation strictly isolates the wave optics circular aperture diffraction limit. 
+            Real-world lenses also suffer from optical aberrations (spherical, coma, chromatic) at wide apertures (f/1.4 - f/2.8); hence in practice 
+            the sharpest 'sweet spot' for typical photographic lenses is usually between f/5.6 and f/8.
+          </span>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================== MODE 2: OPTICAL SYSTEM VIEW ==================== -->
+    <section id="sectionOpticalView" class="viewport-section hidden">
+      <div class="view-header">
+        <div class="view-title-group">
+          <h2>CAMERA OPTICAL SYSTEM: SIDE CUTAWAY CROSS-SECTION</h2>
+          <p class="view-desc">
+            Visualizing light entering camera optics: incident rays, lens refraction, aperture blades, 
+            diffraction wavelets (Huygens-Fresnel), and image formation on the sensor.
+          </p>
+        </div>
+        <div class="optical-controls-group">
+          <button id="btnPlayPause" class="btn btn-outline btn-sm">⏸ Pause Wave</button>
+        </div>
+      </div>
+
+      <!-- Main Cutaway Canvas Area -->
+      <div class="optical-stage">
+        <div class="cutaway-container">
+          <canvas id="opticalSystemCanvas" width="840" height="360" class="cutaway-canvas"></canvas>
+        </div>
+
+        <!-- Scientific Inset Panel -->
+        <div class="insets-row">
+          <!-- Inset A: Physical Aperture -->
+          <div class="inset-card">
+            <div class="inset-title">
+              <span class="badge-letter">A</span> Physical Aperture Diaphragm
+            </div>
+            <div class="inset-canvas-wrapper">
+              <canvas id="insetApertureCanvas" width="200" height="170" class="inset-canvas"></canvas>
+            </div>
+            <p class="inset-desc">Front view of 9 mechanical iris blades rotating to change diameter \(D\).</p>
+          </div>
+
+          <section class="diffraction-info-card" aria-labelledby="airyFormulaTitle">
+            <h3 id="airyFormulaTitle">Airy Disk Diameter & Diffraction Blur</h3>
+            <p>The Airy disk is the bright central spot formed when a lens focuses light from a point. Its diameter indicates diffraction blur: a larger disk spreads light over a wider area and softens fine detail; a smaller disk means less diffraction blur.</p>
+            <div class="diffraction-formula">\(d = 2.44\,\lambda\,\frac{f}{D}\)</div>
+            <p class="formula-variables"><strong>λ</strong> = wavelength of light · <strong>f</strong> = focal length · <strong>D</strong> = aperture diameter</p>
+          </section>
+        </div>
+      </div>
+    </section>
+
+    <!-- Practical Demonstration -->
+    <section class="practical-demo-section" aria-labelledby="practicalDemoTitle">
+      <div class="practical-demo-header">
+        <h2 id="practicalDemoTitle">PRACTICAL DEMONSTRATION</h2>
+        <p>Light source photographs captured at different aperture settings. Compare how the diffraction pattern changes as the aperture closes.</p>
+      </div>
+      <div class="practical-demo-grid">
+        <figure class="practical-demo-card">
+          <img src="images/practical-demo/5.6.jpg" alt="Light source photographed at aperture f/5.6" loading="lazy">
+          <figcaption>f/5.6</figcaption>
+        </figure>
+        <figure class="practical-demo-card">
+          <img src="images/practical-demo/10.jpg" alt="Light source photographed at aperture f/10" loading="lazy">
+          <figcaption>f/10</figcaption>
+        </figure>
+        <figure class="practical-demo-card">
+          <img src="images/practical-demo/20.jpg" alt="Light source photographed at aperture f/20" loading="lazy">
+          <figcaption>f/20</figcaption>
+        </figure>
+        <figure class="practical-demo-card">
+          <img src="images/practical-demo/36.jpg" alt="Light source photographed at aperture f/36" loading="lazy">
+          <figcaption>f/36</figcaption>
+        </figure>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Scripts -->
+  <script src="js/physics.js"></script>
+  <script src="js/scene.js"></script>
+  <script src="js/diffraction-renderer.js"></script>
+  <script src="js/optical-view.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
